@@ -2,21 +2,23 @@ import socket
 import threading
 import tkinter as tk
 from tkinter import messagebox
+import time
 
-HOST = "192.168.2.126"
-PORT = 2004
+HOST = "127.0.0.1"
+PORT = 2003
 
 class ReflexGameClient:
     def __init__(self, root):
         self.root = root
         self.root.title("Duelo de Reflexos")
-        self.root.geometry("400x400")
+        self.root.geometry("600x600")
         self.root.configure(bg="lightgray")
 
         # Nome do jogador
-        self.name_label = tk.Label(root, text="Digite seu nome:", font=("Arial", 12), bg="lightgray")
+        self.name_label = tk.Label(root, text="Digite seu nome:", font=("Arial", 14), bg="lightgray")
         self.name_label.pack(pady=5)
         self.name_entry = tk.Entry(root, font=("Arial", 12))
+        self.name_entry.bind("<Return>", lambda event:self.connect_to_server())
         self.name_entry.pack(pady=5)
 
         self.start_button = tk.Button(root, text="Conectar", font=("Arial", 12), bg="green", fg="white", command=self.connect_to_server)
@@ -34,15 +36,23 @@ class ReflexGameClient:
         self.entry = tk.Entry(root, font=("Arial", 14))
         self.entry.pack(pady=10)
         self.entry.config(state="disabled")  # Inicialmente desabilitado
+        self.entry.bind("<Return>", lambda event:self.send_response())
 
         # Botão para enviar resposta
         self.button = tk.Button(root, text="Enviar", font=("Arial", 14), bg="blue", fg="white", command=self.send_response)
         self.button.pack(pady=10)
         self.button.config(state="disabled")  # Inicialmente desabilitado
 
+        # Mensagem de próxima palavra
+        self.next_word_label = tk.Label(root, text="Próxima palavra em: -", font=("Arial", 14), bg="lightgray")
+        self.next_word_label.pack(pady=10)
+
         # Indicador de pontuação
-        self.score_label = tk.Label(root, text="Pontuação: 0", font=("Arial", 14), bg="lightgray")
+        self.score_label = tk.Label(root, text="Pontuação:", font=("Arial", 14), bg="lightgray")
         self.score_label.pack(pady=10)
+
+        self.score_board = tk.Text(root, font=("Arial", 12), height=10, width=15, state="disabled", bg="white")
+        self.score_board.pack(pady=10)
 
         self.client_socket = None
         self.is_connected = False
@@ -92,7 +102,6 @@ class ReflexGameClient:
                 message = self.client_socket.recv(1024).decode("utf-8")
                 if not message:
                     break
-
                 # Atualiza a interface gráfica na thread principal
                 self.root.after(0, self.process_message, message)
 
@@ -102,33 +111,42 @@ class ReflexGameClient:
 
         self.client_socket.close()
         self.is_connected = False
-        self.root.after(0, self.label.config, {"text": "Conexão perdida...", "fg": "red"})
 
     def process_message(self, message):
         """Processa a mensagem recebida e atualiza a interface."""
         if message.startswith("PALAVRA: "):
-            # O servidor enviou uma nova palavra
             word = message.split(": ")[1]
             self.word_label.config(text=f"{word}")
 
-        elif "acertou!" in message or "Pontuação:" in message:
-            # Atualiza a pontuação dos jogadores
-            self.score_label.config(text=message)
+        elif "acertou!" in message:
+            """Processa a mensagem recebida e atualiza a interface."""
+            self.label.config(text=message, fg="blue", font=("Arial", 14, "bold"))
+            self.word_label.config(text="...", fg="red", font=("Arial", 18, "bold"))
+
+        elif "Próxima palavra em" in message:
+            self.next_word_label.config(text=message, fg='red', font=("Arial", 14, "bold"))
 
         elif "Jogo encerrado!" in message:
-            # Exibe o vencedor e encerra o jogo
             self.label.config(text=message, fg="green", font=("Arial", 16, "bold"))
-            self.client_socket.close()
-            self.is_connected = False
+            self.word_label.config(text="...", fg="red", font=("Arial", 18, "bold"))
+            self.next_word_label.config(text="Próxima palavra em: -", font=("Arial", 14, "bold"))
+            if self.is_connected:
+                self.client_socket.close()
+                self.is_connected = False
 
+        # elif "Pontuação:" in message:
+        #     self.score_board.config(state="normal")
+        #     self.score_board.delete(1.0, tk.END)
+        #     self.score_board.insert(tk.END, message)
+        #     self.score_board.config(state="disabled")
         else:
-            # Outras mensagens
             self.label.config(text=message)
 
     def on_close(self):
         """Fecha a conexão quando a janela é fechada."""
         if self.is_connected and self.client_socket:
             self.client_socket.close()
+            print(f"\33[91mConexão de {self.name_entry} encerrada.\33[0m")
         self.root.quit()
 
 if __name__ == "__main__":
