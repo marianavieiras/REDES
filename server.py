@@ -18,8 +18,8 @@ current_word = ""
 def accept_connections(server_socket, update_ui_callback):
     """Aceita conexões de jogadores."""
     while True:
+        update_ui_callback()
         client_socket, addr = server_socket.accept()
-        #client_socket.sendall("Digite seu nome: ".encode("utf-8"))
         nickname = client_socket.recv(1024).decode("utf-8").strip()
         clients[nickname] = client_socket
         scores[nickname] = 0
@@ -28,7 +28,7 @@ def accept_connections(server_socket, update_ui_callback):
         print(f"Client Socket: {client_socket}\n")
 
         broadcast(f"{nickname} entrou no jogo!")
-        update_ui_callback()  
+        update_ui_callback()
 
         threading.Thread(target=handle_client, args=(client_socket, nickname, update_ui_callback)).start()
 
@@ -40,7 +40,7 @@ def broadcast(message):
         try:
             client.sendall(message.encode("utf-8"))
         except Exception as e:
-            print("\33[31mErro ao enviar broadcast:\33[0m \n", e)  # Ignorar erros ao enviar mensagens
+            print("\33[31mErro ao enviar broadcast:\33[0m \n", e) 
 
 def handle_client(client_socket, nickname, update_ui_callback):
     """Gerencia a interação com cada jogador."""
@@ -55,14 +55,21 @@ def handle_client(client_socket, nickname, update_ui_callback):
             if message == "disconnect_client":
                 broadcast(f"{nickname} saiu do jogo.")
                 clients[nickname].close()
-                del clients[nickname]
+                if nickname in clients:
+                    del clients[nickname]
+                #update_connected_players()
                 break
+        
+            if message == "request_connected_players":
+                connected_players = ", ".join(clients.keys())
+                client_socket.sendall(f"Jogadores conectados: {connected_players}".encode("utf-8"))
+                continue
 
             if message.strip().lower() == current_word.lower():
-                # Primeiro jogador a acertar pontua
                 scores[nickname] += 1
                 broadcast(f"{nickname} acertou!")
-                update_ui_callback()          
+                update_ui_callback()   
+                # Broadcast da pontuação       
                 scores_message = "Pontos: " + ", ".join([f"{player} - {score}" for player, score in scores.items()])
                 broadcast(scores_message) 
                 time.sleep(1)
@@ -77,18 +84,15 @@ def handle_client(client_socket, nickname, update_ui_callback):
                         client.close()
                     clients.clear()
                     scores.clear()
+                    #update_connected_players()
                     update_ui_callback()  
                     break
-                # Escolher nova palavra e enviar para todos
-                #start_new_round(update_ui_callback)
-            else:
-                # Se a palavra não estiver correta, avisa o jogador
+            elif message.strip():
                 client_socket.sendall("Palavra incorreta! Tente novamente.".encode("utf-8"))
         except Exception as e:
             print(f"Erro com {nickname}: {e}")
             break
-
-    update_ui_callback()  # Atualiza a interface com os usuários restantes
+    update_ui_callback()  
 
 def start_new_round(update_ui_callback):
     """Escolhe uma nova palavra e avisa os jogadores."""
@@ -98,10 +102,9 @@ def start_new_round(update_ui_callback):
         broadcast(f"Próxima palavra em {countdown_seconds} segundos...")
         countdown_seconds -= 1
         time.sleep(1)
-    #countdown_seconds += 1
     current_word = random.choice(WORDS)
     broadcast(f"PALAVRA: {current_word}")
-    update_ui_callback()  # Atualiza a interface com a nova palavra
+    update_ui_callback()  
 
 class ServerApp:
     def __init__(self, root):
@@ -134,6 +137,7 @@ class ServerApp:
     def accept_connections_thread(self):
         """Thread para aceitar conexões."""
         accept_connections(self.server_socket, self.update_ui)
+        #update_connected_players()
 
     def update_ui(self):
         """Atualiza a interface com os usuários conectados e a palavra atual."""
@@ -157,6 +161,7 @@ class ServerApp:
         self.label.config(text='Jogo iniciado!', fg='green', font=('Arial', 14, "bold"))
         self.users_list.delete(0, tk.END)
 
+        #update_connected_players()
         start_new_round(self.update_ui)
 
     def on_close(self):

@@ -11,9 +11,9 @@ class ReflexGameClient:
     def __init__(self, root):
         self.root = root
         self.root.title("Duelo de Reflexos")
-        self.root.geometry("600x600")
+        self.root.geometry("600x750")
         self.root.configure(bg="lightgray")
-
+        
         # Nome do jogador
         self.name_label = tk.Label(root, text="Digite seu nome:", font=("Arial", 14), bg="lightgray")
         self.name_label.pack(pady=5)
@@ -23,6 +23,16 @@ class ReflexGameClient:
 
         self.start_button = tk.Button(root, text="Conectar", font=("Arial", 12), bg="green", fg="white", command=self.connect_to_server)
         self.start_button.pack(pady=5)
+
+        # Jogadores conectados
+        self.connected_players_label = tk.Label(root, text="Jogadores conectados:", font=("Arial", 12), bg="lightgray")
+        self.connected_players_label.pack(pady=5)
+        self.connected_players_list = tk.Text(root, font=("Arial", 12), height=3, width=20, state="disabled", bg="white")
+        self.connected_players_list.pack(pady=5)
+
+        # Botão para atualizar jogadores conectados
+        self.update_connected_players_button = tk.Button(root, text="Atualizar Jogadores", font=("Arial", 12), bg="blue", fg="white", command=self.request_connected_players)
+        self.update_connected_players_button.pack(pady=5)
 
         # Mensagem inicial
         self.label = tk.Label(root, text="Aguardando conexão...", font=("Arial", 14), bg="lightgray")
@@ -72,15 +82,12 @@ class ReflexGameClient:
             # Desabilita o campo de nome e o botão após a conexão
             self.name_entry.config(state="disabled")
             self.start_button.config(state="disabled")
-
             # Habilita entrada e botão de envio
             self.entry.config(state="normal")
             self.button.config(state="normal")
 
             self.label.config(text="Aguardando o jogo começar...")
-
             threading.Thread(target=self.receive_messages, daemon=True).start()
-
         except Exception as e:
             messagebox.showerror("Erro", f"Não foi possível conectar ao servidor: {e}")
             self.client_socket = None
@@ -102,7 +109,6 @@ class ReflexGameClient:
                     break
                 # Atualiza a interface gráfica na thread principal
                 self.root.after(0, self.process_message, message)
-
             except Exception as e:
                 print(f"Erro ao receber mensagem: {e}")
                 break
@@ -110,18 +116,42 @@ class ReflexGameClient:
         self.client_socket.close()
         self.is_connected = False
 
+    def request_connected_players(self):
+        """Solicita a lista de jogadores conectados ao servidor."""
+        if self.is_connected:
+            try:
+                self.client_socket.sendall("request_connected_players".encode("utf-8"))
+            except Exception as e:
+                print(f"Erro ao solicitar jogadores conectados: {e}")
+
     def process_message(self, message):
         """Processa a mensagem recebida e atualiza a interface."""
         if message.startswith("PALAVRA: "):
             word = message.split(": ")[1]
             self.word_label.config(text=f"{word}")
 
+        elif "entrou no jogo!" in message:
+            """Exibe a mensagem de entrada no label principal."""
+            self.label.config(text=message, fg="blue", font=("Arial", 14, "bold"))
+            player = message.split(" ")[0]
+            self.connected_players_list.config(state="normal")
+            self.connected_players_list.insert(tk.END, f"{player}\n")
+
+        elif message.startswith("Jogadores conectados: "):
+            """Atualiza a lista de jogadores conectados."""
+            players = message.split(": ")[1] 
+            self.connected_players_list.config(state="normal")
+            self.connected_players_list.delete("1.0", tk.END)  
+            for player in players.split(", "):  
+                self.connected_players_list.insert(tk.END, f"{player}\n")
+            self.connected_players_list.config(state="disabled")
+
         elif "acertou!" in message:
             """Processa a mensagem recebida e atualiza a interface."""
             self.label.config(text=message, fg="blue", font=("Arial", 14, "bold"))
             self.word_label.config(text="...", fg="red", font=("Arial", 18, "bold"))
         
-        elif "palavra incorreta" in message:
+        elif message.startswith("Palavra incorreta"):
             """Processa a mensagem recebida e atualiza a interface."""
             self.label.config(text=message, fg="red", font=("Arial", 14, "bold"))
 
@@ -141,6 +171,10 @@ class ReflexGameClient:
             if self.is_connected:
                 self.client_socket.close()
                 self.is_connected = False
+                # Remove os jogadores conectados da lista
+                self.connected_players_list.config(state="normal")
+                self.connected_players_list.delete("1.0", tk.END)  
+                self.connected_players_list.config(state="disabled")
 
         elif "Pontos:" in message:
             """Processa a mensagem recebida e atualiza a interface."""
