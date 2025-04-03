@@ -50,8 +50,7 @@ class ReflexGameClient:
         # Indicador de pontuação
         self.score_label = tk.Label(root, text="Pontuação:", font=("Arial", 14), bg="lightgray")
         self.score_label.pack(pady=10)
-
-        self.score_board = tk.Text(root, font=("Arial", 12), height=10, width=15, state="disabled", bg="white")
+        self.score_board = tk.Text(root, font=("Arial", 14), height=6, width=15, state="disabled", bg="white")
         self.score_board.pack(pady=10)
 
         self.client_socket = None
@@ -63,7 +62,6 @@ class ReflexGameClient:
         if not nickname:
             messagebox.showwarning("Aviso", "Digite seu nome antes de conectar!")
             return
-
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         try:
@@ -122,11 +120,21 @@ class ReflexGameClient:
             """Processa a mensagem recebida e atualiza a interface."""
             self.label.config(text=message, fg="blue", font=("Arial", 14, "bold"))
             self.word_label.config(text="...", fg="red", font=("Arial", 18, "bold"))
+        
+        elif "palavra incorreta" in message:
+            """Processa a mensagem recebida e atualiza a interface."""
+            self.label.config(text=message, fg="red", font=("Arial", 14, "bold"))
+
+        elif "saiu do jogo" in message:
+            """Processa a mensagem recebida e atualiza a interface."""
+            self.label.config(text=message, fg="red", font=("Arial", 14, "bold"))
 
         elif "Próxima palavra em" in message:
+            """Processa a mensagem recebida e atualiza a interface."""
             self.next_word_label.config(text=message, fg='red', font=("Arial", 14, "bold"))
 
         elif "Jogo encerrado!" in message:
+            """Processa a mensagem recebida e atualiza a interface."""
             self.label.config(text=message, fg="green", font=("Arial", 16, "bold"))
             self.word_label.config(text="...", fg="red", font=("Arial", 18, "bold"))
             self.next_word_label.config(text="Próxima palavra em: -", font=("Arial", 14, "bold"))
@@ -134,19 +142,29 @@ class ReflexGameClient:
                 self.client_socket.close()
                 self.is_connected = False
 
-        # elif "Pontuação:" in message:
-        #     self.score_board.config(state="normal")
-        #     self.score_board.delete(1.0, tk.END)
-        #     self.score_board.insert(tk.END, message)
-        #     self.score_board.config(state="disabled")
+        elif "Pontos:" in message:
+            """Processa a mensagem recebida e atualiza a interface."""
+            scores = message.split(": ")[1]  
+            self.score_board.config(state="normal") 
+            self.score_board.delete("1.0", tk.END)  
+            for score in scores.split(", "):  
+                self.score_board.insert(tk.END, f"{score}\n")  
+            self.score_board.config(state="disabled")  
         else:
+            """Demais mensagens recebidas."""
             self.label.config(text=message)
 
     def on_close(self):
         """Fecha a conexão quando a janela é fechada."""
         if self.is_connected and self.client_socket:
-            self.client_socket.close()
-            print(f"\33[91mConexão de {self.name_entry} encerrada.\33[0m")
+            try:
+                # Envia uma mensagem especial ao servidor antes de fechar
+                self.client_socket.sendall("disconnect_client".encode("utf-8"))
+            except Exception as e:
+                print(f"Erro ao enviar mensagem de desconexão: {e}")
+            finally:
+                self.client_socket.close()
+                print(f"\33[91mConexão de {self.name_entry.get()} encerrada.\33[0m")
         self.root.quit()
 
 if __name__ == "__main__":

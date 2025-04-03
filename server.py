@@ -52,10 +52,19 @@ def handle_client(client_socket, nickname, update_ui_callback):
             if not message:
                 break
 
+            if message == "disconnect_client":
+                broadcast(f"{nickname} saiu do jogo.")
+                clients[nickname].close()
+                del clients[nickname]
+                break
+
             if message.strip().lower() == current_word.lower():
                 # Primeiro jogador a acertar pontua
                 scores[nickname] += 1
                 broadcast(f"{nickname} acertou!")
+                update_ui_callback()          
+                scores_message = "Pontos: " + ", ".join([f"{player} - {score}" for player, score in scores.items()])
+                broadcast(scores_message) 
                 time.sleep(1)
                 start_new_round(update_ui_callback)
 
