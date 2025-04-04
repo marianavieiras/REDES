@@ -9,7 +9,7 @@ HOST = "0.0.0.0"
 PORT = 2003
 
 # Lista de palavras que serão enviadas
-WORDS = ["Python", "Reflexo", "Código", "Computador", "Jogador", "Desafio", "Rápido", "Digitando", "Vencedor"]
+WORDS = ["Servidor", "Reflexo", "Pacote", "Dispositivo", "Comunicação", "Transporte", "Aplicação", "Confiabilidade", "Conexão", "Protocolo", "Firewall", "Varredura", "Ethernet"]
 
 clients = {}
 scores = {}
@@ -57,7 +57,6 @@ def handle_client(client_socket, nickname, update_ui_callback):
                 clients[nickname].close()
                 if nickname in clients:
                     del clients[nickname]
-                #update_connected_players()
                 break
         
             if message == "request_connected_players":
@@ -84,21 +83,24 @@ def handle_client(client_socket, nickname, update_ui_callback):
                         client.close()
                     clients.clear()
                     scores.clear()
-                    #update_connected_players()
                     update_ui_callback()  
                     break
-            elif message.strip():
+            elif message.strip():  # Verifica se a mensagem não está vazia
+                # Envia "Palavra incorreta" apenas para tentativas de resposta
                 client_socket.sendall("Palavra incorreta! Tente novamente.".encode("utf-8"))
         except Exception as e:
             print(f"Erro com {nickname}: {e}")
             break
-    update_ui_callback()  
+    update_ui_callback()
 
 def start_new_round(update_ui_callback):
     """Escolhe uma nova palavra e avisa os jogadores."""
     global current_word
+
     countdown_seconds = 3
     while countdown_seconds > 0:
+        if any(score == 5 for score in scores.values()):
+            return
         broadcast(f"Próxima palavra em {countdown_seconds} segundos...")
         countdown_seconds -= 1
         time.sleep(1)

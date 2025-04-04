@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import messagebox
 import time
 
-HOST = "127.0.0.1"
+HOST = "192.168.2.111"
 PORT = 2003
 
 class ReflexGameClient:
@@ -130,6 +130,10 @@ class ReflexGameClient:
             word = message.split(": ")[1]
             self.word_label.config(text=f"{word}")
 
+            # Reabilita o campo e o botão de enviar
+            self.button.config(state="normal")
+            self.entry.config(state="normal")
+
         elif "entrou no jogo!" in message:
             """Exibe a mensagem de entrada no label principal."""
             self.label.config(text=message, fg="blue", font=("Arial", 14, "bold"))
@@ -150,6 +154,10 @@ class ReflexGameClient:
             """Processa a mensagem recebida e atualiza a interface."""
             self.label.config(text=message, fg="blue", font=("Arial", 14, "bold"))
             self.word_label.config(text="...", fg="red", font=("Arial", 18, "bold"))
+            
+            #Desabilita o campo de digitação e o botão de enviar
+            self.button.config(state="disabled")
+            self.entry.config(state="disabled")  # Desabilita o campo de entrada após acertar
         
         elif message.startswith("Palavra incorreta"):
             """Processa a mensagem recebida e atualiza a interface."""
