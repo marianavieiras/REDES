@@ -9,7 +9,10 @@ HOST = "0.0.0.0"
 PORT = 2003
 
 # Lista de palavras que serão enviadas
-WORDS = ["Servidor", "Reflexo", "Pacote", "Dispositivo", "Comunicação", "Transporte", "Aplicação", "Confiabilidade", "Conexão", "Protocolo", "Firewall", "Varredura", "Ethernet"]
+WORDS = ["Servidor", "Reflexo", "Pacote", "Dispositivo", 
+    "Comunicação", "Transporte", "Aplicação", "Confiabilidade", 
+    "Conexão", "Protocolo", "Firewall", "Varredura", "Ethernet", 
+    "Mensagem", "Datagrama", "Segmento", "Transmissão", ]
 
 clients = {}
 scores = {}
@@ -57,8 +60,8 @@ def handle_client(client_socket, nickname, update_ui_callback):
                 clients[nickname].close()
                 if nickname in clients:
                     del clients[nickname]
-                break
-        
+                break     
+
             if message == "request_connected_players":
                 connected_players = ", ".join(clients.keys())
                 client_socket.sendall(f"Jogadores conectados: {connected_players}".encode("utf-8"))
@@ -132,14 +135,16 @@ class ServerApp:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # reutilização da porta 2003
         self.server_socket.bind((HOST, PORT))
+        # Inicia o servidor
         self.server_socket.listen()
+        print(f"\33[42mServidor iniciado em {HOST}:{PORT}\33[0m")
+        print("Esperando conexões...")
 
         threading.Thread(target=self.accept_connections_thread, daemon=True).start()
 
     def accept_connections_thread(self):
         """Thread para aceitar conexões."""
         accept_connections(self.server_socket, self.update_ui)
-        #update_connected_players()
 
     def update_ui(self):
         """Atualiza a interface com os usuários conectados e a palavra atual."""

@@ -72,6 +72,7 @@ class ReflexGameClient:
         if not nickname:
             messagebox.showwarning("Aviso", "Digite seu nome antes de conectar!")
             return
+        
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         try:
@@ -157,7 +158,7 @@ class ReflexGameClient:
             
             #Desabilita o campo de digitação e o botão de enviar
             self.button.config(state="disabled")
-            self.entry.config(state="disabled")  # Desabilita o campo de entrada após acertar
+            self.entry.config(state="disabled")  
         
         elif message.startswith("Palavra incorreta"):
             """Processa a mensagem recebida e atualiza a interface."""
@@ -200,7 +201,6 @@ class ReflexGameClient:
         """Fecha a conexão quando a janela é fechada."""
         if self.is_connected and self.client_socket:
             try:
-                # Envia uma mensagem especial ao servidor antes de fechar
                 self.client_socket.sendall("disconnect_client".encode("utf-8"))
             except Exception as e:
                 print(f"Erro ao enviar mensagem de desconexão: {e}")
